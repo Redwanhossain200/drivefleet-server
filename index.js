@@ -196,3 +196,25 @@ async function runStableAPIConnect() {
         res.status(500).json({ message: 'Failed to fetch vehicle details' });
       }
     });
+
+    app.post('/cars', verifyToken, async (req, res) => {
+      try {
+        const carData = req.body;
+        const newCar = {
+          ...carData,
+          dailyRentPrice: Number(carData.dailyRentPrice),
+          seatCapacity: Number(carData.seatCapacity) || 5,
+          booking_count: 0,
+          ownerEmail: req.user?.email || carData.ownerEmail,
+          ownerName: req.user?.name || carData.ownerName || 'Car Host',
+          createdAt: new Date(),
+        };
+
+        const result = await carsCollection.insertOne(newCar);
+        res.status(201).json({ success: true, insertedId: result.insertedId });
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: 'Failed to add car', error: error.message });
+      }
+    });
