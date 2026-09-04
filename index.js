@@ -218,3 +218,50 @@ async function runStableAPIConnect() {
           .json({ message: 'Failed to add car', error: error.message });
       }
     });
+
+    app.get('/my-cars', verifyToken, async (req, res) => {
+      try {
+        const email = req.user?.email || req.query.email;
+        const result = await carsCollection
+          .find({ ownerEmail: email })
+          .sort({ createdAt: -1 })
+          .toArray();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch my cars' });
+      }
+    });
+
+    app.put('/cars/:id', verifyToken, async (req, res) => {
+      try {
+        const { id } = req.params;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ message: 'Invalid ID format' });
+        }
+
+        const updateData = req.body;
+        const result = await carsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { ...updateData, updatedAt: new Date() } },
+        );
+        res.json({ success: true, modifiedCount: result.modifiedCount });
+      } catch (error) {
+        res.status(500).json({ message: 'Failed to update car' });
+      }
+    });
+
+    app.delete('/cars/:id', verifyToken, async (req, res) => {
+      try {
+        const { id } = req.params;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ message: 'Invalid ID format' });
+        }
+
+        const result = await carsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.json({ success: true, deletedCount: result.deletedCount });
+      } catch (error) {
+        res.status(500).json({ message: 'Failed to delete car' });
+      }
+    });
