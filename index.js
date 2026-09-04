@@ -118,8 +118,8 @@ const verifyToken = async (req, res, next) => {
 
 async function runStableAPIConnect() {
   try {
-    await client.connect();
-    console.log('✅ Connected successfully to MongoDB Database (drivefleet)!');
+    // await client.connect();
+    // console.log('✅ Connected successfully to MongoDB Database (drivefleet)!');
 
     const db = client.db('drivefleet');
     const carsCollection = db.collection('cars');
