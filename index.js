@@ -339,3 +339,21 @@ async function runStableAPIConnect() {
     console.error('MongoDB Connection Error:', err);
   }
 }
+
+runStableAPIConnect().catch(console.dir);
+
+app.get('/', (req, res) => {
+  res.send({
+    status: 'Server is running fine',
+    db: 'drivefleet',
+    time: new Date(),
+  });
+});
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
