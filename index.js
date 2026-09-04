@@ -265,3 +265,47 @@ async function runStableAPIConnect() {
         res.status(500).json({ message: 'Failed to delete car' });
       }
     });
+
+    app.post('/bookings', verifyToken, async (req, res) => {
+      try {
+        const bookingData = req.body;
+        const carId = bookingData.carId;
+
+        if (!carId || !ObjectId.isValid(carId)) {
+          return res.status(400).json({ message: 'Valid carId is required' });
+        }
+
+        const car = await carsCollection.findOne({ _id: new ObjectId(carId) });
+        if (!car) {
+          return res.status(404).json({ message: 'Vehicle not found' });
+        }
+
+        const newBooking = {
+          ...bookingData,
+          carName: car.carName,
+          carImage: car.image,
+          carType: car.carType,
+          userEmail: req.user?.email || bookingData.userEmail,
+          userName: req.user?.name || bookingData.userName || 'Customer',
+          status: 'Confirmed',
+          bookingDate: new Date(),
+        };
+
+        const bookingResult = await bookingsCollection.insertOne(newBooking);
+
+        await carsCollection.updateOne(
+          { _id: new ObjectId(carId) },
+          { $inc: { booking_count: 1 } },
+        );
+
+        res
+          .status(201)
+          .json({ success: true, insertedId: bookingResult.insertedId });
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: 'Failed to create booking', error: error.message });
+      }
+    });
+
+    
