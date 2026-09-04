@@ -308,4 +308,34 @@ async function runStableAPIConnect() {
       }
     });
 
-    
+    app.get('/my-bookings', verifyToken, async (req, res) => {
+      try {
+        const email = req.user?.email || req.query.email;
+        const result = await bookingsCollection
+          .find({ userEmail: email })
+          .sort({ bookingDate: -1 })
+          .toArray();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch bookings' });
+      }
+    });
+
+    app.delete('/bookings/:id', verifyToken, async (req, res) => {
+      try {
+        const { id } = req.params;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ message: 'Invalid booking ID' });
+        }
+        const result = await bookingsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.json({ success: true, deletedCount: result.deletedCount });
+      } catch (error) {
+        res.status(500).json({ message: 'Failed to cancel booking' });
+      }
+    });
+  } catch (err) {
+    console.error('MongoDB Connection Error:', err);
+  }
+}
