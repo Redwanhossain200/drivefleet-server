@@ -115,3 +115,84 @@ const verifyToken = async (req, res, next) => {
     .status(401)
     .json({ message: 'Unauthorized: Please log in to perform this action' });
 };
+
+async function runStableAPIConnect() {
+  try {
+    await client.connect();
+    console.log('✅ Connected successfully to MongoDB Database (drivefleet)!');
+
+    const db = client.db('drivefleet');
+    const carsCollection = db.collection('cars');
+    const bookingsCollection = db.collection('bookings');
+
+    app.get('/cars', async (req, res) => {
+      try {
+        const { search, carType, sort, availability } = req.query;
+        let query = {};
+
+        if (search && search.trim() !== '') {
+          query.carName = { $regex: search.trim(), $options: 'i' };
+        }
+
+        if (carType && carType !== 'All' && carType !== 'all') {
+          const types = Array.isArray(carType) ? carType : carType.split(',');
+          query.carType = {
+            $in: types.map((t) => new RegExp(`^${t.trim()}$`, 'i')),
+          };
+        }
+
+        if (availability && availability !== 'All') {
+          query.availabilityStatus = availability;
+        }
+
+        let sortOption = { createdAt: -1 };
+        if (sort === 'price-low') sortOption = { dailyRentPrice: 1 };
+        if (sort === 'price-high') sortOption = { dailyRentPrice: -1 };
+        if (sort === 'popular') sortOption = { booking_count: -1 };
+
+        const result = await carsCollection
+          .find(query)
+          .sort(sortOption)
+          .toArray();
+        res.json(result);
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: 'Failed to fetch cars', error: error.message });
+      }
+    });
+
+    app.get('/available-cars', async (req, res) => {
+      try {
+        const result = await carsCollection
+          .find({ availabilityStatus: 'Available' })
+          .sort({ booking_count: -1, createdAt: -1 })
+          .limit(8)
+          .toArray();
+
+        if (result.length < 6) {
+          const all = await carsCollection.find({}).limit(8).toArray();
+          return res.json(all);
+        }
+
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch available cars' });
+      }
+    });
+
+    app.get('/cars/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ message: 'Invalid ID format' });
+        }
+        const result = await carsCollection.findOne({ _id: new ObjectId(id) });
+        if (!result) {
+          return res.status(404).json({ message: 'Vehicle not found' });
+        }
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch vehicle details' });
+      }
+    });
